@@ -1,0 +1,28 @@
+{
+  "name": "rakshak.ai",
+  "version": "1.0.0",
+  "description": "An IoT-based accident detection system that uses Gemini AI to analyze sensor data, reduce false alarms, and trigger intelligent emergency responses in critical situations.\r # Rakshak AI – Intelligent Accident Detection & Emergency Response",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/susantagautam55-cyber/Rakshak.AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/susantagautam55-cyber/Rakshak.AI/issues"
+  },
+  "homepage": "https://github.com/susantagautam55-cyber/Rakshak.AI#readme",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "twilio": "^5.11.2"
+  }
+}

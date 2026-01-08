@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rakshak AI | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans">
+    <div class="container mx-auto p-8">
+        <header class="flex justify-between items-center border-b border-slate-700 pb-6 mb-8">
+            <h1 class="text-3xl font-bold text-red-500">RAKSHAK AI <span class="text-white font-light">| Dashboard</span></h1>
+            <div id="status" class="text-green-400 flex items-center gap-2">● System Active</div>
+        </header>
+
+        <div id="alert-banner" class="hidden bg-red-600 p-6 rounded-xl mb-8 border-2 border-red-400 animate-pulse">
+            <h2 class="text-2xl font-bold">🚨 CRITICAL ACCIDENT DETECTED</h2>
+            <p id="ai-summary" class="mt-2 text-red-100 font-medium"></p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center">
+                <p class="text-slate-400 mb-2 uppercase text-sm tracking-widest">Impact Force</p>
+                <div class="text-5xl font-bold" id="impact-val">0.0 <span class="text-xl text-slate-500">G</span></div>
+            </div>
+            <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center">
+                <p class="text-slate-400 mb-2 uppercase text-sm tracking-widest">Current Speed</p>
+                <div class="text-5xl font-bold" id="speed-val">0 <span class="text-xl text-slate-500">km/h</span></div>
+            </div>
+            <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center">
+                <p class="text-slate-400 mb-2 uppercase text-sm tracking-widest">Location</p>
+                <div class="text-xl font-semibold mt-4 text-blue-400" id="loc-val">Waiting for signal...</div>
+            </div>
+        </div>
+
+        <button onclick="testAccident()" class="mt-12 bg-red-600 hover:bg-red-700 px-8 py-4 rounded-full font-bold transition-all">
+            Simulate Accident
+        </button>
+    </div>
+
+    <script>
+        async function testAccident() {
+            const testData = { impact: "14.2", speed: "88", tilt: "90", location: "Sector 128, Noida" };
+            
+            // Updating UI immediately
+            document.getElementById('impact-val').innerText = testData.impact;
+            document.getElementById('speed-val').innerText = testData.speed;
+            document.getElementById('loc-val').innerText = testData.location;
+
+            try {
+                const response = await fetch('http://localhost:3000/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                const result = await response.json();
+                
+                if (result.analysis.includes("Critical") || result.analysis.includes("Medium")) {
+                    document.getElementById('alert-banner').classList.remove('hidden');
+                    document.getElementById('ai-summary').innerText = result.analysis;
+                }
+            } catch (err) {
+                console.error("Backend unreachable");
+            }
+        }
+    </script>
+</body>
+</html>

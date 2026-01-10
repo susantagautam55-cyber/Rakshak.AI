@@ -1,6 +1,6 @@
 /**
- * RAKSHAK AI – Backend Server (FINAL MERGED VERSION)
- * Gemini Hackathon Ready
+ * RAKSHAK AI – Stable Backend (NO AI DEPENDENCY)
+ * Deterministic Accident Detection Engine
  */
 
 const express = require("express");
@@ -8,8 +8,6 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const path = require("path");
 const twilio = require("twilio");
-const rateLimit = require("express-rate-limit");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // --------------------------------------------------
 // ENV SETUP
@@ -17,7 +15,6 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 dotenv.config({ path: path.join(__dirname, "../.env") });
 
 const REQUIRED_ENV = [
-  "GEMINI_API_KEY",
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",
   "TWILIO_PHONE_NUMBER",
@@ -26,7 +23,7 @@ const REQUIRED_ENV = [
 
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
-    console.error(`❌ Missing environment variable: ${key}`);
+    console.error(`❌ Missing env var: ${key}`);
     process.exit(1);
   }
 }
@@ -36,61 +33,87 @@ for (const key of REQUIRED_ENV) {
 // --------------------------------------------------
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "10kb" })); // protect against large payloads
+app.use(express.json({ limit: "10kb" }));
 
 // --------------------------------------------------
-// RATE LIMITING (PROTECT TWILIO & GEMINI)
+// TWILIO
 // --------------------------------------------------
-const analyzeLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 50,
-  message: "Too many analysis requests. Please try again later.",
-});
-
-app.use("/analyze", analyzeLimiter);
-
-// --------------------------------------------------
-// CLIENTS
-// --------------------------------------------------
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
-});
-
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 );
 
 // --------------------------------------------------
-// UTIL FUNCTIONS
+// CORE ACCIDENT LOGIC (NO AI)
 // --------------------------------------------------
-function sanitizeString(str, maxLength = 100) {
-  if (typeof str !== "string") return "";
-  return str.replace(/[\n\r<>`"]/g, "").slice(0, maxLength);
+function analyzeAccident({ impact, speed, tilt }) {
+  // False alarm
+  if (impact < 2 && speed < 5) {
+    return {
+      is_accident: false,
+      severity: "LOW",
+      summary: "Minor vibration detected",
+      action: "Ignore",
+    };
+  }
+
+  // Pothole / sudden brake
+  if (impact >= 3 && impact < 8 && speed > 20 && tilt < 20) {
+    return {
+      is_accident: false,
+      severity: "LOW",
+      summary: "Likely pothole or hard braking",
+      action: "Log Event",
+    };
+  }
+
+  // Medium accident
+  if (impact >= 8 && speed >= 40) {
+    return {
+      is_accident: true,
+      severity: "MEDIUM",
+      summary: "Possible collision detected",
+      action: "Notify Emergency Contact",
+    };
+  }
+
+  // Severe crash
+  if (impact >= 12 && speed >= 60 && tilt >= 45) {
+    return {
+      is_accident: true,
+      severity: "CRITICAL",
+      summary: "Severe accident detected",
+      action: "Dispatch Ambulance",
+    };
+  }
+
+  return {
+    is_accident: false,
+    severity: "LOW",
+    summary: "Unclear sensor pattern",
+    action: "Log Event",
+  };
 }
 
-function extractJSON(text) {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("No JSON found in AI response");
-  return JSON.parse(match[0]);
-}
-
-async function sendEmergencySMS(severity, summary, location) {
+// --------------------------------------------------
+// SMS
+// --------------------------------------------------
+async function sendEmergencySMS(result, location) {
   try {
     await twilioClient.messages.create({
-      body: `🚨 RAKSHAK AI ALERT
-SEVERITY: ${severity}
-LOCATION: ${location}
-
-SUMMARY: ${summary}`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: process.env.EMERGENCY_CONTACT,
+      body: `🚨 RAKSHAK AI ALERT
+
+Severity: ${result.severity}
+Location: ${location}
+
+${result.summary}`,
     });
 
     console.log("📲 Emergency SMS sent");
   } catch (err) {
-    console.error("❌ Twilio SMS failed:", err.message);
+    console.error("❌ SMS failed:", err.message);
   }
 }
 
@@ -99,94 +122,32 @@ SUMMARY: ${summary}`,
 // --------------------------------------------------
 app.post("/analyze", async (req, res) => {
   try {
-    let { impact, speed, tilt, location } = req.body;
+    const { impact, speed, tilt, location } = req.body;
 
-    // ---- Validation ----
     if (
-      impact === undefined ||
-      speed === undefined ||
-      tilt === undefined ||
-      typeof location !== "string" ||
-      location.trim().length === 0
+      typeof impact !== "number" ||
+      typeof speed !== "number" ||
+      typeof tilt !== "number" ||
+      !location
     ) {
-      return res.status(400).json({ error: "Invalid or missing sensor data" });
+      return res.status(400).json({ error: "Invalid sensor data" });
     }
 
-    const impactVal = Number(impact);
-    const speedVal = Number(speed);
-    const tiltVal = Number(tilt);
+    console.log("📩 Sensor data received:", req.body);
 
-    if (![impactVal, speedVal, tiltVal].every(Number.isFinite)) {
-      return res.status(400).json({ error: "Sensor values must be valid numbers" });
+    const result = analyzeAccident({ impact, speed, tilt });
+
+    console.log("🧠 Analysis result:", result);
+
+    if (result.is_accident && result.severity !== "LOW") {
+      await sendEmergencySMS(result, location);
     }
 
-    const safeLocation = sanitizeString(location);
-
-    console.log("📩 Sensor data:", {
-      impactVal,
-      speedVal,
-      tiltVal,
-      safeLocation,
-    });
-
-    // ---- Gemini Prompt ----
-    const prompt = `
-ACT AS AN EXPERT VEHICLE ACCIDENT ANALYSIS AI.
-
-DATA:
-- Impact: ${impactVal} G
-- Speed: ${speedVal} km/h
-- Tilt: ${tiltVal} degrees
-- Location: ${safeLocation}
-
-RULES:
-1. High impact + zero speed = dropped phone (FALSE).
-2. Moderate impact + speed continues = pothole (FALSE).
-3. High impact + speed drop + tilt >45 = CRITICAL accident.
-
-OUTPUT JSON ONLY:
-{
-  "is_accident": boolean,
-  "severity": "LOW" | "MEDIUM" | "CRITICAL",
-  "confidence": number,
-  "summary": "short explanation",
-  "action": "Dispatch Ambulance | Log Event | Ignore"
-}
-`;
-
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text();
-
-    let analysis;
-    try {
-      analysis = extractJSON(rawText);
-    } catch (err) {
-      console.error("❌ AI JSON parse error:", rawText);
-      return res.status(500).json({ error: "Malformed AI response" });
-    }
-
-    console.log("🧠 Gemini Analysis:", analysis);
-
-    // ---- Emergency Logic ----
-    if (
-      analysis.is_accident === true &&
-      (analysis.severity === "CRITICAL" || analysis.severity === "MEDIUM")
-    ) {
-      console.log("⚠️ Emergency detected → Sending SMS");
-      await sendEmergencySMS(
-        analysis.severity,
-        analysis.summary,
-        safeLocation
-      );
-    } else {
-      console.log("✅ False alarm / low severity");
-    }
-
-    res.json({ success: true, data: analysis });
+    res.json({ success: true, data: result });
 
   } catch (err) {
     console.error("❌ Server error:", err.message);
-    res.status(500).json({ error: "Internal analysis failure" });
+    res.status(500).json({ error: "Internal error" });
   }
 });
 
@@ -194,15 +155,11 @@ OUTPUT JSON ONLY:
 // HEALTH CHECK
 // --------------------------------------------------
 app.get("/health", (req, res) => {
-  res.json({
-    status: "healthy",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ status: "ok", uptime: process.uptime() });
 });
 
 // --------------------------------------------------
-// SERVER START
+// START SERVER
 // --------------------------------------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

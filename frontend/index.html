@@ -1,68 +1,256 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rakshak AI | Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <title>Rakshak AI – Emergency Detection</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #0b1220;
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .card {
+      background: #121a2f;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      margin-top: 12px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .btn-danger {
+      background: #e53935;
+      color: white;
+    }
+
+    .btn-safe {
+      background: #2e7d32;
+      color: white;
+    }
+
+    .btn-primary {
+      background: #1976d2;
+      color: white;
+    }
+
+    .status {
+      text-align: center;
+      font-size: 18px;
+      margin-top: 10px;
+    }
+
+    .log {
+      background: #0e1628;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+    }
+
+    .countdown {
+      font-size: 32px;
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    .hint {
+      font-size: 14px;
+      opacity: 0.85;
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
 </head>
-<body class="bg-slate-900 text-white font-sans">
-    <div class="container mx-auto p-8">
-        <header class="flex justify-between items-center border-b border-slate-700 pb-6 mb-8">
-            <h1 class="text-3xl font-bold text-red-500">RAKSHAK AI <span class="text-white font-light">| Dashboard</span></h1>
-            <div id="status" class="text-green-400 flex items-center gap-2">● System Active</div>
-        </header>
 
-        <div id="alert-banner" class="hidden bg-red-600 p-6 rounded-xl mb-8 border-2 border-red-400 animate-pulse">
-            <h2 class="text-2xl font-bold">🚨 CRITICAL ACCIDENT DETECTED</h2>
-            <p id="ai-summary" class="mt-2 text-red-100 font-medium"></p>
-        </div>
+<body>
+  <div class="app">
+    <h1>🚨 Rakshak AI</h1>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center">
-                <p class="text-slate-400 mb-2 uppercase text-sm tracking-widest">Impact Force</p>
-                <div class="text-5xl font-bold" id="impact-val">0.0 <span class="text-xl text-slate-500">G</span></div>
-            </div>
-            <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center">
-                <p class="text-slate-400 mb-2 uppercase text-sm tracking-widest">Current Speed</p>
-                <div class="text-5xl font-bold" id="speed-val">0 <span class="text-xl text-slate-500">km/h</span></div>
-            </div>
-            <div class="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center">
-                <p class="text-slate-400 mb-2 uppercase text-sm tracking-widest">Location</p>
-                <div class="text-xl font-semibold mt-4 text-blue-400" id="loc-val">Waiting for signal...</div>
-            </div>
-        </div>
+    <!-- GLOBAL STATUS -->
+    <p class="status" id="statusText">
+      Rakshak is monitoring for accidents
+    </p>
 
-        <button onclick="testAccident()" class="mt-12 bg-red-600 hover:bg-red-700 px-8 py-4 rounded-full font-bold transition-all">
-            Simulate Accident
-        </button>
+    <!-- IDLE / HOME -->
+    <div class="card" id="idleScreen">
+      <p class="hint">
+        Automatic accident detection and emergency alerts are active.
+      </p>
+
+      <button class="btn-primary" id="simulateBtn">
+        Simulate Accident
+      </button>
     </div>
 
-    <script>
-        async function testAccident() {
-            const testData = { impact: "14.2", speed: "88", tilt: "90", location: "Sector 128, Noida" };
-            
-            // Updating UI immediately
-            document.getElementById('impact-val').innerText = testData.impact;
-            document.getElementById('speed-val').innerText = testData.speed;
-            document.getElementById('loc-val').innerText = testData.location;
+    <!-- COUNTDOWN / VERIFICATION -->
+    <div class="card hidden" id="countdownScreen">
+      <p class="status">
+        Possible Accident Detected
+      </p>
 
-            try {
-                const response = await fetch('http://localhost:3000/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(testData)
-                });
-                const result = await response.json();
-                
-                if (result.analysis.includes("Critical") || result.analysis.includes("Medium")) {
-                    document.getElementById('alert-banner').classList.remove('hidden');
-                    document.getElementById('ai-summary').innerText = result.analysis;
-                }
-            } catch (err) {
-                console.error("Backend unreachable");
-            }
+      <p class="hint">
+        Emergency contacts will be notified automatically in
+      </p>
+
+      <div class="countdown" id="countdownTimer">10</div>
+
+      <button class="btn-safe" id="cancelBtn">
+        I’m Safe — Cancel Alert
+      </button>
+
+      <button class="btn-danger" id="sosBtn">
+        I Need Help Now
+      </button>
+    </div>
+
+    <!-- RESULT / RESPONSE -->
+    <div class="card hidden" id="resultScreen">
+      <p class="status" id="resultStatus">
+        Analyzing accident data…
+      </p>
+
+      <div class="log" id="resultLog"></div>
+
+      <p class="hint">
+        Why this alert triggered: impact, speed, and device tilt were detected.
+      </p>
+
+      <button class="btn-primary" id="resetBtn">
+        Return to Monitoring
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const idleScreen = document.getElementById("idleScreen");
+    const countdownScreen = document.getElementById("countdownScreen");
+    const resultScreen = document.getElementById("resultScreen");
+
+    const simulateBtn = document.getElementById("simulateBtn");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const sosBtn = document.getElementById("sosBtn");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const countdownTimer = document.getElementById("countdownTimer");
+    const resultLog = document.getElementById("resultLog");
+    const resultStatus = document.getElementById("resultStatus");
+    const statusText = document.getElementById("statusText");
+
+    let countdownInterval;
+    let countdown = 10;
+
+    function show(screen) {
+      idleScreen.classList.add("hidden");
+      countdownScreen.classList.add("hidden");
+      resultScreen.classList.add("hidden");
+      screen.classList.remove("hidden");
+    }
+
+    simulateBtn.onclick = () => {
+      countdown = 10;
+      countdownTimer.textContent = countdown;
+      statusText.textContent = "Possible accident detected — verifying safety";
+      show(countdownScreen);
+
+      countdownInterval = setInterval(() => {
+        countdown--;
+        countdownTimer.textContent = countdown;
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+          sendToBackend();
         }
-    </script>
+      }, 1000);
+    };
+
+    cancelBtn.onclick = () => {
+      clearInterval(countdownInterval);
+      statusText.textContent = "Alert cancelled — monitoring resumed";
+      show(idleScreen);
+    };
+
+    sosBtn.onclick = () => {
+      clearInterval(countdownInterval);
+      sendToBackend();
+    };
+
+    resetBtn.onclick = () => {
+      statusText.textContent = "Rakshak is monitoring for accidents";
+      show(idleScreen);
+    };
+
+    async function sendToBackend() {
+      show(resultScreen);
+      resultStatus.textContent = "Analyzing accident data…";
+      resultLog.textContent = "";
+
+      try {
+        const res = await fetch("http://localhost:3000/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            impact: 14.2,
+            speed: 88,
+            tilt: 90,
+            location: "Sector 128, Nepal"
+          })
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+          throw new Error("Analysis failed");
+        }
+
+        const severity = data.data.severity || "UNKNOWN";
+
+        if (severity === "CRITICAL") {
+          resultStatus.textContent = "Critical Accident — Emergency Alert Sent";
+        } else if (severity === "MEDIUM") {
+          resultStatus.textContent = "Accident Detected — Contacts Notified";
+        } else {
+          resultStatus.textContent = "False Alarm — No Action Taken";
+        }
+
+        resultLog.textContent = JSON.stringify(data.data, null, 2);
+
+      } catch (err) {
+        resultStatus.textContent = "System Error";
+        resultLog.textContent = err.message;
+      }
+    }
+  </script>
 </body>
 </html>

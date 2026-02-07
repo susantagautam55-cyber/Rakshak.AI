@@ -1,0 +1,101 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #0b1220;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.app {
+  max-width: 420px;
+  width: 100%;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.status {
+  text-align: center;
+  opacity: 0.85;
+}
+
+.hidden { display: none; }
+
+.card {
+  background: #121a2f;
+  border-radius: 14px;
+  padding: 18px;
+  margin-top: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 16px;
+  margin-top: 12px;
+  border-radius: 10px;
+  border: none;
+  font-weight: bold;
+}
+
+.btn-primary { background: #1976d2; color: #fff; }
+.btn-danger { background: #e53935; color: #fff; }
+.btn-safe { background: #2e7d32; color: #fff; }
+.btn-secondary { background: #2a3558; color: #fff; }
+
+.countdown {
+  font-size: 36px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.slider-wrap {
+  margin-top: 14px;
+}
+
+#slideTrack {
+  background: #1c2a4a;
+  height: 56px;
+  border-radius: 40px;
+}
+
+#slideThumb {
+  background: #2e7d32;
+  height: 56px;
+  width: 65%;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.map img {
+  width: 100%;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.medical-card {
+  background: #0f1a33;
+  padding: 14px;
+  border-radius: 10px;
+  margin-top: 12px;
+}
+
+.log {
+  background: #0e1628;
+  padding: 10px;
+  font-size: 13px;
+  border-radius: 8px;
+  margin-top: 10px;
+}

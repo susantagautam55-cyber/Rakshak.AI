@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rakshak AI – Emergency Detection</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- MAIN CSS -->
+  <link rel="stylesheet" href="css/main.css">
+</head>
+
+<body>
+<div class="app">
+
+  <h1>🚨 Rakshak AI</h1>
+  <p class="status" id="statusText">Monitoring for accidents</p>
+
+  <!-- IDLE -->
+  <div class="card" id="idle">
+    <button class="btn-primary" id="simulateBtn">
+      Test Emergency System
+    </button>
+
+    <button class="btn-secondary" onclick="openProfile()">
+      Medical Profile
+    </button>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div class="card hidden" id="countdown">
+    <p class="status">Possible crash detected</p>
+    <div class="countdown" id="timer">10</div>
+
+    <!-- SLIDE TO CANCEL -->
+    <div class="slider-wrap">
+      <div id="slideTrack">
+        <div id="slideThumb">→ Slide to Cancel</div>
+      </div>
+    </div>
+
+    <button class="btn-danger" id="sosBtn">
+      SOS — Get Help Now
+    </button>
+  </div>
+
+  <!-- EMERGENCY -->
+  <div class="card hidden" id="emergency">
+    <p class="status" id="emergencyStatus">
+      Help is being contacted — stay calm
+    </p>
+
+    <div class="timeline" id="timeline">
+      • Impact detected<br>
+      • Severity verified<br>
+      • Emergency services notified
+    </div>
+
+    <div class="map">
+      <img id="mapImage" alt="Accident location map">
+    </div>
+
+    <div class="medical-card" id="medicalCard"></div>
+
+    <div class="log" id="resultLog"></div>
+
+    <button class="btn-safe" onclick="alertBystander()">
+      I am helping this person
+    </button>
+
+    <button class="btn-secondary" onclick="toggleSilent()">
+      Silent Mode
+    </button>
+
+    <button class="btn-primary" id="resetBtn">
+      Return to Monitoring
+    </button>
+  </div>
+
+</div>
+
+<script>
+  const idle = document.getElementById("idle");
+  const countdown = document.getElementById("countdown");
+  const emergency = document.getElementById("emergency");
+
+  const simulateBtn = document.getElementById("simulateBtn");
+  const sosBtn = document.getElementById("sosBtn");
+  const resetBtn = document.getElementById("resetBtn");
+
+  const statusText = document.getElementById("statusText");
+  const timerEl = document.getElementById("timer");
+  const emergencyStatus = document.getElementById("emergencyStatus");
+  const timeline = document.getElementById("timeline");
+  const resultLog = document.getElementById("resultLog");
+  const mapImage = document.getElementById("mapImage");
+  const medicalCard = document.getElementById("medicalCard");
+
+  let timer = 10;
+  let interval;
+  let silent = false;
+
+  function show(screen) {
+    idle.classList.add("hidden");
+    countdown.classList.add("hidden");
+    emergency.classList.add("hidden");
+    screen.classList.remove("hidden");
+  }
+
+  function speak(text) {
+    if (silent || !("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.95;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
+
+  function vibrate(pattern) {
+    if ("vibrate" in navigator) navigator.vibrate(pattern);
+  }
+
+  function renderMedicalCard() {
+    medicalCard.innerHTML = `
+      <h3>🩺 Medical Information</h3>
+      <p><span class="label">Name:</span> ${localStorage.getItem("rakshak_name") || "Not set"}</p>
+      <p><span class="label">Blood Group:</span> ${localStorage.getItem("rakshak_blood") || "Not set"}</p>
+      <p><span class="label">Allergies:</span> ${localStorage.getItem("rakshak_allergies") || "None"}</p>
+      <p><span class="label">Emergency Contact:</span> ${localStorage.getItem("rakshak_contact") || "Not set"}</p>
+    `;
+  }
+
+  simulateBtn.onclick = () => {
+    timer = 10;
+    timerEl.textContent = timer;
+    statusText.textContent = "Assessing possible incident…";
+    show(countdown);
+
+    speak("Possible crash detected. Please respond if you are okay.");
+    vibrate([200,100,200]);
+
+    interval = setInterval(() => {
+      timer--;
+      timerEl.textContent = timer;
+
+      if (timer === 5) {
+        speak("Emergency services will be contacted in five seconds.");
+      }
+
+      if (timer <= 0) {
+        clearInterval(interval);
+        speak("No response detected. Contacting emergency services now.");
+        sendData();
+      }
+    }, 1000);
+  };
+
+  document.getElementById("slideThumb").onclick = () => {
+    clearInterval(interval);
+    statusText.textContent = "Alert cancelled — monitoring resumed";
+    vibrate([100]);
+    show(idle);
+  };
+
+  sosBtn.onclick = () => {
+    clearInterval(interval);
+    sendData();
+  };
+
+  resetBtn.onclick = () => {
+    statusText.textContent = "Monitoring for accidents";
+    show(idle);
+  };
+
+  function alertBystander() {
+    speak("Emergency services have been contacted. Please stay nearby and follow instructions.");
+  }
+
+  function toggleSilent() {
+    silent = !silent;
+    statusText.textContent = silent ? "Silent mode enabled" : "Silent mode disabled";
+  }
+
+  async function sendData() {
+    show(emergency);
+    vibrate([500]);
+
+    renderMedicalCard();
+
+    const locationText = "Sector 128, Nepal";
+    mapImage.src =
+      "https://maps.googleapis.com/maps/api/staticmap" +
+      "?center=" + encodeURIComponent(locationText) +
+      "&zoom=15&size=400x200&markers=color:red|" +
+      encodeURIComponent(locationText);
+
+    try {
+      const res = await fetch("http://localhost:3000/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          impact: 14.2,
+          speed: 88,
+          tilt: 90,
+          location: locationText
+        })
+      });
+
+      const data = await res.json();
+      emergencyStatus.textContent = "Help is on the way";
+      resultLog.textContent =
+        "Why this alert was triggered:\n\n" +
+        data.data.summary +
+        "\n\nSeverity: " + data.data.severity;
+
+    } catch {
+      emergencyStatus.textContent = "Network issue — please call emergency services manually";
+    }
+  }
+
+  function openProfile() {
+    window.location.href = "profile.html";
+  }
+</script>
+</body>
+</html>
